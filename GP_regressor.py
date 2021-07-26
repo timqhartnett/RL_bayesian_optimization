@@ -16,8 +16,8 @@ import random
 from collections import deque
 
 random.seed(42)
-os.chdir('/Users/timhartnett/Desktop/superconductivity/')
-data_df = pd.read_csv('/Users/timhartnett/Desktop/superconductivity/train.csv')
+WORKING_DIR = os.getcwd()
+data_df = pd.read_csv(WORKING_DIR+'/train.csv')
 data = data_df.values
 initial_set = data[random.sample(range(data.shape[0]),100),]
 X = initial_set[:,:80].reshape(-1,80)
@@ -85,7 +85,7 @@ class environment(object):
             self.current_data = np.vstack((self.current_data,new_data))
         else:
             info = 'random'
-            new_data = self.virtual_data[random.sample(range(self.virtual_data.shape[0]),500),:]
+            new_data = self.virtual_data[random.sample(range(self.virtual_data.shape[0]),k=1),:]
             self.current_data = np.vstack((self.current_data,new_data))
         new_state = self.state(self.current_data)
         reward = -1
@@ -165,7 +165,7 @@ def main():
     epsilon = 1 # Epsilon-greedy algorithm in initialized at 1 meaning every step is random at the start
     max_epsilon = 1 # You can't explore more than 100% of the time
     min_epsilon = 0.01 # At a minimum, we'll always explore 1% of the time
-    decay = 0.1
+    decay = 0.01
     # 1. Initialize the Target and Main models
     # Main Model (updated every 4 steps)
     env = environment(data)
@@ -198,11 +198,11 @@ def main():
         i = 0
         while not done:
             random_number = np.random.rand()
-            print(i)
+            print('number of training samples'+str(env.current_data.shape))
             i += 1
             if random_number <= epsilon:
                 # Explore
-                action = random.randint(0,3)
+                action = random.randint(0,2)
             # Exploit best known action (no epsilon sampling due to option of random step in actions)
             else: 
                 encoded = encode_observation(observation, observation.shape[0])
@@ -232,7 +232,7 @@ def main():
                     target_model.set_weights(main_model.get_weights())
                     steps_to_update_target_model = 0
                 break
-            if i == 100:
+            if i == 10000:
                 break
 
 if __name__ == '__main__':
