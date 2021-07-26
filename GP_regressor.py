@@ -149,7 +149,7 @@ def train(env, replay_memory, model, target_model, done):
         current_qs = current_qs_list[index]
         current_qs[action] = (1 - learning_rate) * current_qs[action] + learning_rate * max_future_q
 
-        X.append(encode_observation(observation, env.observation_space.shape))
+        X.append(encode_observation(observation, env.current_state.shape))
         Y.append(current_qs)
     model.fit(np.array(X), np.array(Y), batch_size=batch_size, verbose=0, shuffle=True)
 
@@ -195,8 +195,10 @@ def main():
         done = False
         i = 0
         while not done:
+            steps_to_update_target_model += 1
             random_number = np.random.rand()
             print('number of training samples'+str(env.current_data.shape))
+            print('steps to update target:'+str(10-steps_to_update_target_model%10))
             i += 1
             if random_number <= epsilon:
                 # Explore
@@ -211,13 +213,13 @@ def main():
             replay_memory.append([observation, action, reward, new_observation, done])
 
             # 3. Update the Main Network using the Bellman Equation
-            if steps_to_update_target_model % 4 == 0 or done:
+            if steps_to_update_target_model % 10 == 0 or done:
                 train(env, replay_memory, main_model, target_model, done)
 
             observation = new_observation
             total_training_rewards += reward
             env.update_model()
-            print(env.m)
+            print_summary(env.m)
             print('distance to max')
             print(np.max(env.virtual_data[:,-1])-np.max(env.current_data[:,-1]))
             print('action = '+actions[action])     
