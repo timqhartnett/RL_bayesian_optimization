@@ -19,19 +19,6 @@ random.seed(42)
 WORKING_DIR = os.getcwd()
 data_df = pd.read_csv(WORKING_DIR+'/train.csv')
 data = data_df.values
-initial_set = data[random.sample(range(data.shape[0]),100),]
-X = initial_set[:,:80].reshape(-1,80)
-Y = initial_set[:,81].reshape(-1,1)
-
-k = gpflow.kernels.Matern52()
-
-m = gpflow.models.GPR(data=(X, Y), kernel=k, mean_function=None)
-
-opt = gpflow.optimizers.Scipy()
-
-opt_logs = opt.minimize(m.training_loss, m.trainable_variables, options=dict(maxiter=100))
-print_summary(m)
-
 class GP_model(object):
     '''
     model for bayesian prediction of material properties
@@ -41,10 +28,12 @@ class GP_model(object):
     def train_GP(self,kernel='Matern52',optimizer='L-BFGS-B'):
         X = self.training_data[:,:-1]
         Y = self.training_data[:,-1].reshape(-1,1)
-        k = gpflow.kernels.Matern52()
+        X = (X - X.mean()) / X.std()
+        Y = (Y - Y.mean()) / Y.std()
+        k = gpflow.kernels.Matern12()
         m = gpflow.models.GPR(data=(X, Y), kernel=k, mean_function=None)
         opt = gpflow.optimizers.Scipy()
-        self.opt_logs = opt.minimize(m.training_loss, m.trainable_variables, options=dict(maxiter=100))
+        self.opt_logs = opt.minimize(m.training_loss, m.trainable_variables, options=dict(maxiter=1000))
         return m
 
 class environment(object):
@@ -58,35 +47,44 @@ class environment(object):
         sd = np.std(current_data[:,-1])
         norm_data = (current_data[:,-1]-mean)/sd
         norm_data.sort()
-        state = np.concatenate((norm_data[:20],norm_data[-20:]))
+        state = np.concatenate((norm_data[:10],norm_data[-10:]))
         return state
     def reset(self, n_initial):
         '''
         this method is to generate a random initial training set for a toy problem and train the initial GP
         '''
-        self.current_data = self.virtual_data[random.sample(range(data.shape[0]),n_initial),:]
+        initial_selection = np.unique(random.sample(range(self.virtual_data.shape[0]),100))
+        self.current_data = self.virtual_data[initial_selection,:]
         self.current_state = self.state(self.current_data)
+        self.virtual_data = np.delete(self.virtual_data,initial_selection,axis=0)
         model = GP_model(self.current_data)
         self.m = model.train_GP()
     def predict_virtual(self):
-        mean, sd = self.m.predict_y(self.virtual_data[:,:-1])
-        return mean, sd
+        X = self.virtual_data[:,:-1]
+        norm_mean, norm_var = self.m.predict_y(X)
+        mean = norm_mean*self.current_data[:,-1].std()+self.current_data[:,-1].mean()
+        var = norm_var*self.current_data[:,-1].std()+self.current_data[:,-1].mean()
+        return mean, var
     def step(self,action):
         mean, var = self.predict_virtual()
         if action == 0:
             info = 'exploit'
             new_data_index = np.argmax(mean)
             new_data = self.virtual_data[new_data_index,:].reshape((1,self.current_data.shape[1]))
-            self.current_data = np.vstack((self.current_data,new_data))
+            self.current_data = np.unique(np.vstack((self.current_data,new_data)),axis=0)
+            self.virtual_data = np.delete(self.virtual_data,new_data_index,axis=0)
         elif action == 1:
             info = 'explore'
             new_data_index = np.argmax(var)
             new_data = self.virtual_data[new_data_index,:].reshape((1,self.current_data.shape[1]))
-            self.current_data = np.vstack((self.current_data,new_data))
+            self.current_data = np.unique(np.vstack((self.current_data,new_data)),axis=0)
+            self.virtual_data = np.delete(self.virtual_data,new_data_index,axis=0)
         else:
             info = 'random'
-            new_data = self.virtual_data[random.sample(range(self.virtual_data.shape[0]),k=1),:]
-            self.current_data = np.vstack((self.current_data,new_data))
+            new_data_index = random.sample(range(self.virtual_data.shape[0]),1)
+            new_data = self.virtual_data[new_data_index,:]
+            self.current_data = np.unique(np.vstack((self.current_data,new_data)),axis=0)
+            self.virtual_data = np.delete(self.virtual_data,new_data_index,axis=0)
         new_state = self.state(self.current_data)
         reward = -1
         done = self.is_done()
@@ -135,9 +133,9 @@ def train(env, replay_memory, model, target_model, done):
         return
     batch_size = 64 * 2
     mini_batch = random.sample(replay_memory, batch_size)
-    current_states = np.array([encode_observation(transition[0], env.observation_space.shape) for transition in mini_batch])
+    current_states = np.array([encode_observation(transition[0], env.current_state.shape) for transition in mini_batch])
     current_qs_list = model.predict(current_states)
-    new_current_states = np.array([encode_observation(transition[3], env.observation_space.shape) for transition in mini_batch])
+    new_current_states = np.array([encode_observation(transition[3], env.current_state.shape) for transition in mini_batch])
     future_qs_list = target_model.predict(new_current_states)
 
     X = []
@@ -181,11 +179,11 @@ def main():
 
     replay_memory = deque(maxlen=50_000)
 
-    target_update_counter = 0
+    #target_update_counter = 0
 
     # X = states, y = actions
-    X = []
-    y = []
+    #X = []
+    #y = []
 
     steps_to_update_target_model = 0
 
@@ -234,6 +232,7 @@ def main():
                 break
             if i == 10000:
                 break
+        epsilon = min_epsilon + (max_epsilon - min_epsilon) * np.exp(-decay * episode)
 
 if __name__ == '__main__':
     main()     
