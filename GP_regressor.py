@@ -66,6 +66,7 @@ class environment(object):
         self.m = model.train_GP()
     def predict_virtual(self):
         X = self.virtual_data[:,:-1]
+        X = (X - X.mean()) / X.std()
         norm_mean, norm_var = self.m.predict_y(X)
         mean = norm_mean*self.current_data[:,-1].std()+self.current_data[:,-1].mean()
         var = norm_var*self.current_data[:,-1].std()+self.current_data[:,-1].mean()
@@ -84,10 +85,7 @@ class environment(object):
             info = 'random'
             new_data_index = random.sample(range(self.virtual_data.shape[0]),1)
             new_data = self.virtual_data[new_data_index,:]
-        if new_data[:,-1] > np.max(self.current_data[:,-1]):
-            reward = 1
-        else:
-            reward = -1
+        reward = -1
         self.current_data = np.unique(np.vstack((self.current_data,new_data)),axis=0)
         self.virtual_data = np.delete(self.virtual_data,new_data_index,axis=0)
         new_state = self.state(self.current_data)
