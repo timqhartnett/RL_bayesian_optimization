@@ -86,7 +86,7 @@ class GP_model(object):
         mean, var = self.predict_virtual()
         maximum = np.max(self.training_data[:,-1])
         z = (maximum-mean)/var
-        ei = (maximum+mean)*dist.cdf(z)+(var*dist.pdf(z))
+        ei = (maximum-mean)*dist.cdf(z)+(var*dist.pdf(z))
         return ei
     
     def update_model(self):
