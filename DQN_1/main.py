@@ -36,7 +36,7 @@ if __name__ == '__main__':
     epsilon = 1 # Epsilon-greedy algorithm in initialized at 1 meaning every step is random at the start# You can't explore more than 100% of the time
     min_epsilon = 0.01 # At a minimum, we'll always explore 1% of the time
     decay = 0.001
-    number_experiments = 100 # total number of steps allowed per episode
+    number_experiments = 40 # total number of steps allowed per episode
 
     env = env_1(data,n_initial=20)
     agent = networks.Agent(num_actions, epsilon = epsilon)
@@ -60,5 +60,5 @@ if __name__ == '__main__':
         eps_history.append(agent.epsilon)
         score.append(total_training_rewards)
     
-    agent.save_models()
+    agent.save_model()
     

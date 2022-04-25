@@ -18,7 +18,7 @@ from tensorflow.keras.models import load_model
 
 class DQN(tf.keras.Model):
     
-    def __init__(self, n_actions, fc1_dims = 64, fc2_dims=32, name = 'DQN',
+    def __init__(self, n_actions, fc1_dims = 64, fc2_dims=64, name = 'DQN',
                  checkpoint_dir = 'tmp/DQN/'):
         super(DQN,self).__init__()
         self.fc1_dims = fc1_dims  #number of dimensiion on first fully connected layer
@@ -59,8 +59,8 @@ class ReplayBuffer():
         return states, actions, rewards, new_states, dones
 
 class Agent:
-    def __init__(self,n_actions,epsilon,epsilon_dec = 1e-3, eps_end = 0.01, alpha=0.001,gamma=0.99,
-                 batch_size=128,mem_size = 1000000, fc1_dims = 64, fc2_dims = 32,
+    def __init__(self,n_actions,epsilon,epsilon_dec = 1e-3, eps_end = 0.01, alpha=0.01,gamma=0.99,
+                 batch_size=128,mem_size = 1000000, fc1_dims = 64, fc2_dims = 64,
                  replace = 100,fname = 'DQN_1'):
         self.action_space = [i for i in range(n_actions)]
         self.epsilon = epsilon

@@ -44,10 +44,13 @@ class env_1(object):
         sd = np.std(current_data[:,-1])
         norm_data = (current_data[:,-1]-mean)/sd
         norm_data.sort()
+        median = np.median(norm_data)
         virtual_mean,virtual_var = self.predict_virtual()
         max_diff = np.max(virtual_mean)-np.max(current_data[:,-1])
         virtual_var = np.mean(virtual_var)
-        state = np.array([norm_data[0],norm_data[-1],max_diff,virtual_var,exp_num])
+        state = np.array([norm_data[0],norm_data[-1],median,max_diff,virtual_var,exp_num,self.current_data.shape[0],
+                          ])
+        
         return state
     
     def reset(self):
